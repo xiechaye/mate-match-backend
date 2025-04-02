@@ -2,6 +2,8 @@ package com.suave.matematch.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.suave.matematch.common.ErrorCode;
 import com.suave.matematch.exception.BusinessException;
 import com.suave.matematch.model.domain.User;
@@ -15,6 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,7 +41,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     /**
      * 盐值，混淆密码
      */
-    private static final String SALT = "yupi";
+    private static final String SALT = "Suave";
 
     /**
      * 用户注册
@@ -91,7 +97,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         User user = new User();
         user.setUserAccount(userAccount);
         user.setUserPassword(encryptPassword);
-        user.setPlanetCode(planetCode);
         boolean saveResult = this.save(user);
         if (!saveResult) {
             return -1;
@@ -164,10 +169,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         safetyUser.setGender(originUser.getGender());
         safetyUser.setPhone(originUser.getPhone());
         safetyUser.setEmail(originUser.getEmail());
-        safetyUser.setPlanetCode(originUser.getPlanetCode());
         safetyUser.setUserRole(originUser.getUserRole());
         safetyUser.setUserStatus(originUser.getUserStatus());
         safetyUser.setCreateTime(originUser.getCreateTime());
+        safetyUser.setTags(originUser.getTags());
         return safetyUser;
     }
 
@@ -183,4 +188,63 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         return 1;
     }
 
+    /**
+     * 根据标签搜索用户(内存查询)
+     *
+     * @param tagNameList 标签名列表
+     * @return 用户列表
+     */
+    public List<User> searchUsersByTags (List<String> tagNameList) {
+        // 内存查询
+        if(tagNameList == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        QueryWrapper<User> qw = new QueryWrapper<>();
+        // 查询所有用户
+        List<User> userList = userMapper.selectList(qw);
+
+        return userList.stream().filter(user -> {
+            if(user.getTags() == null) {
+                return false;
+            }
+
+            // 解析JSON字符串
+            Gson gson = new Gson();
+            Set<String> tagNameSet = gson.fromJson(user.getTags(), new TypeToken<Set<String>>() {});
+            // 判断tagNameSet是否为空
+            tagNameSet = Optional.ofNullable(tagNameSet).orElse(new HashSet<>());
+            // 标签匹配
+            for (String tagName : tagNameList) {
+                if(!tagNameSet.contains(tagName)) {
+                    return false;
+                }
+            }
+            return true;
+        }).toList();
+    }
+
+    /**
+     * 根据标签搜索用户(sql查询)
+     *
+     * @param tagNameList 标签名列表
+     * @return 用户列表
+     */
+    @Deprecated
+    private List<User> searchUsersByTagsBySQL (List<String> tagNameList) {
+        // SQL查询
+        if(tagNameList == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        // 模糊匹配
+        QueryWrapper<User> qw = new QueryWrapper<>();
+        for (String tag : tagNameList) {
+            qw.like("tags", tag);
+        }
+        List<User> users = userMapper.selectList(qw);
+
+        // 脱敏
+        return users.stream().map(this::getSafetyUser).toList();
+    }
 }

@@ -4,6 +4,8 @@ import com.suave.matematch.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.List;
+
 /**
  * 用户服务
  *
@@ -34,18 +36,23 @@ public interface UserService extends IService<User> {
     /**
      * 用户脱敏
      *
-     * @param originUser
-     * @return
+     * @param originUser 原始用户信息
+     * @return 脱敏后的用户信息
      */
     User getSafetyUser(User originUser);
-
-    // [加入编程导航](https://t.zsxq.com/0emozsIJh) 深耕编程提升【两年半】、国内净值【最高】的编程社群、用心服务【20000+】求学者、帮你自学编程【不走弯路】
 
     /**
      * 用户注销
      *
      * @param request
-     * @return
+     * @return 注销状态
      */
     int userLogout(HttpServletRequest request);
+
+    /**
+     * 根据标签搜索用户
+     * @param tagNameList 标签名列表
+     * @return 用户列表
+     */
+    List<User> searchUsersByTags (List<String> tagNameList);
 }
