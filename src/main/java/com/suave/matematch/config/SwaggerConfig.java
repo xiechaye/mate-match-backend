@@ -7,6 +7,7 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 
 /**
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
  * @author Suave
  */
 @Configuration
+@Profile({"dev", "test"}) // 仅在开发和测试环境下启用Swagger
 public class SwaggerConfig {
 
     @Bean
