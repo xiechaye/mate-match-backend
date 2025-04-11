@@ -6,6 +6,9 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
+import static com.suave.matematch.contant.UserConstant.ADMIN_ROLE;
+import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
+
 /**
  * 用户服务
  *
@@ -55,4 +58,34 @@ public interface UserService extends IService<User> {
      * @return 用户列表
      */
     List<User> searchUsersByTags (List<String> tagNameList);
+
+    /**
+     * 是否为管理员
+     *
+     * @param request
+     * @return
+     */
+    boolean isAdmin(HttpServletRequest request);
+
+    /**
+     * 是否为管理员
+     * @param user 用户
+     * @return
+     */
+    boolean isAdmin(User user);
+
+    /**
+     * 获取登录用户
+     * @param request
+     * @return
+     */
+    User getLoginUser(HttpServletRequest request);
+
+    /**
+     * 更新用户信息
+     * @param user 用户信息
+     * @param loginUser 登录用户
+     * @return
+     */
+    int updateUser(User user, User loginUser);
 }

@@ -19,11 +19,13 @@ import org.springframework.util.DigestUtils;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.suave.matematch.contant.UserConstant.ADMIN_ROLE;
 import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
 
 /**
@@ -216,6 +218,76 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             }
             return true;
         }).toList();
+    }
+
+    /**
+     * 是否为管理员
+     *
+     * @param request
+     * @return
+     */
+    public boolean isAdmin(HttpServletRequest request) {
+        // 仅管理员可查询
+        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        User user = (User) userObj;
+        return user != null && user.getUserRole() == ADMIN_ROLE;
+    }
+
+    /**
+     * 是否为管理员
+     *
+     * @param user 用户信息
+     * @return
+     */
+    public boolean isAdmin(User user) {
+        return user != null && user.getUserRole() == ADMIN_ROLE;
+    }
+
+    /**
+     * 获取当前登录用户
+     * @param request
+     * @return
+     */
+    public User getLoginUser(HttpServletRequest request) {
+        if(request == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+
+        if(user == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+
+        return user;
+    }
+
+    /**
+     * 更新用户信息
+     * @param user 用户信息
+     * @param loginUser 登录用户
+     * @return
+     */
+    public int updateUser(User user, User loginUser) {
+        long userId = user.getId();
+        if(userId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 查询用户
+        User oldUser = userMapper.selectById(userId);
+        if(oldUser == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_EXIST);
+        }
+
+        if(!isAdmin(user) && !Objects.equals(user.getId(), loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+
+        // 更改信息
+        int i = userMapper.updateById(user);
+        if(i == 0) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新失败");
+        }
+        return i;
     }
 
     /**
