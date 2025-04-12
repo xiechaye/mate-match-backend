@@ -123,7 +123,9 @@ public class UserController {
      * @return
      */
     @GetMapping("/search")
-    public BaseResponse<List<User>> searchUsers(String username, HttpServletRequest request) {
+    public BaseResponse<List<User>> searchUsers(@RequestParam(required = false, defaultValue = "10") Long pageSize,
+                                                @RequestParam(required = false, defaultValue = "1") Long pageNum,
+                                                String username, HttpServletRequest request) {
         if (!userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH, "缺少管理员权限");
         }
@@ -131,8 +133,8 @@ public class UserController {
         if (StringUtils.isNotBlank(username)) {
             queryWrapper.like("username", username);
         }
-        List<User> userList = userService.list(queryWrapper);
-        List<User> list = userList.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
+        IPage<User> userIPage = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+        List<User> list = userIPage.getRecords().stream().map(user -> userService.getSafetyUser(user)).toList();
         return ResultUtils.success(list);
     }
 
