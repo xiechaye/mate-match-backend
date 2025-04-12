@@ -189,4 +189,19 @@ public class UserController {
         int result = userService.updateUser(user, loginUser);
         return ResultUtils.success(result);
     }
+
+    /**
+     * 推荐用户
+     *
+     * @param request
+     * @return
+     */
+    @GetMapping("/recommend")
+    public BaseResponse<List<User>> recommendUsers(HttpServletRequest request) {
+        //todo 推荐算法
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        List<User> userList = userService.list(queryWrapper);
+        List<User> list = userList.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
+        return ResultUtils.success(list);
+    }
 }
