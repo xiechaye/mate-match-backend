@@ -1,6 +1,8 @@
 package com.suave.matematch.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.suave.matematch.common.BaseResponse;
 import com.suave.matematch.common.ErrorCode;
 import com.suave.matematch.model.domain.User;
@@ -12,6 +14,7 @@ import com.suave.matematch.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -197,11 +200,12 @@ public class UserController {
      * @return
      */
     @GetMapping("/recommend")
-    public BaseResponse<List<User>> recommendUsers(HttpServletRequest request) {
+    public BaseResponse<List<User>> recommendUsers(@RequestParam(required = false, defaultValue = "10") Long pageSize,
+                                                   @RequestParam(required = false, defaultValue = "1") Long pageNum,
+                                                   HttpServletRequest request) {
         //todo 推荐算法
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        List<User> userList = userService.list(queryWrapper);
-        List<User> list = userList.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
-        return ResultUtils.success(list);
+        IPage<User> userList = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+        return ResultUtils.success(userList.getRecords());
     }
 }
