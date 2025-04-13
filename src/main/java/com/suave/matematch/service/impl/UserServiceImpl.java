@@ -1,6 +1,8 @@
 package com.suave.matematch.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -11,8 +13,11 @@ import com.suave.matematch.service.UserService;
 import com.suave.matematch.mapper.UserMapper;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -22,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,14 +37,15 @@ import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
 /**
  * 用户服务实现类
  *
+ * @author Suave
  */
 @Service
 @Slf4j
-public class UserServiceImpl extends ServiceImpl<UserMapper, User>
-        implements UserService {
+@AllArgsConstructor
+public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
-    @Resource
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     /**
      * 盐值，混淆密码
@@ -254,10 +261,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
 
-        if(user == null) {
-            throw new BusinessException(ErrorCode.NOT_LOGIN);
-        }
-
         return user;
     }
 
@@ -288,6 +291,48 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新失败");
         }
         return i;
+    }
+
+    /**
+     * 获取推荐用户列表
+     *
+     * @param pageSize 单页数据数
+     * @param pageNum 页码
+     * @param request
+     * @return
+     */
+    public List<User> recommendUsers(Long pageSize, Long pageNum, HttpServletRequest request) {
+        //todo 推荐算法
+        String redisKey = "matematch:recommend";
+        // 获取用户id
+        User user = getLoginUser(request);
+        if(user == null || user.getId() <= 0) {
+            // 定义缓存key
+            redisKey = String.format("%s:all", redisKey);
+        }else {
+            redisKey = String.format("%s:%s", redisKey, user.getId());
+        }
+
+        // 查询缓存
+        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+        List<User> userList = (List<User>) valueOperations.get(redisKey);
+        if(userList != null) {
+            return userList;
+        }
+
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        IPage<User> userIPage = userMapper.selectPage(new Page<>(pageNum, pageSize), queryWrapper);
+
+        // 脱敏
+        userList = userIPage.getRecords().stream().map(this::getSafetyUser).toList();
+
+        // 向缓存插入数据
+        try {
+            valueOperations.set(redisKey, userList, 1, TimeUnit.DAYS);
+        } catch (Exception e) {
+            log.error("Redis set error: {}", e.getMessage());
+        }
+        return userList;
     }
 
     /**

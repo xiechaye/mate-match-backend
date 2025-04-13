@@ -13,8 +13,11 @@ import com.suave.matematch.exception.BusinessException;
 import com.suave.matematch.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,11 +33,11 @@ import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
  */
 @RestController
 @RequestMapping("/user")
+@AllArgsConstructor
 @CrossOrigin(origins = {"http://localhost:5173"}, allowCredentials = "true")
 public class UserController {
 
-    @Resource
-    private UserService userService;
+    private final UserService userService;
 
     /**
      * 用户注册
@@ -118,6 +121,8 @@ public class UserController {
     /**
      * 获取用户列表
      *
+     * @param pageSize 单页数据数
+     * @param pageNum 页码
      * @param username 用户名
      * @param request
      * @return
@@ -190,6 +195,9 @@ public class UserController {
         }
         // 判断用户是否登录
         User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
         // 更新用户
         int result = userService.updateUser(user, loginUser);
         return ResultUtils.success(result);
@@ -198,6 +206,8 @@ public class UserController {
     /**
      * 推荐用户
      *
+     * @param pageSize 单页数据数
+     * @param pageNum 页码
      * @param request
      * @return
      */
@@ -205,9 +215,7 @@ public class UserController {
     public BaseResponse<List<User>> recommendUsers(@RequestParam(required = false, defaultValue = "10") Long pageSize,
                                                    @RequestParam(required = false, defaultValue = "1") Long pageNum,
                                                    HttpServletRequest request) {
-        //todo 推荐算法
-        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        IPage<User> userList = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
-        return ResultUtils.success(userList.getRecords());
+        List<User> list = userService.recommendUsers(pageSize, pageNum, request);
+        return ResultUtils.success(list);
     }
 }

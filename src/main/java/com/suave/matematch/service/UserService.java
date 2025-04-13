@@ -88,4 +88,13 @@ public interface UserService extends IService<User> {
      * @return
      */
     int updateUser(User user, User loginUser);
+
+    /**
+     * 获取推荐用户列表
+     * @param pageSize 单页数据数
+     * @param pageNum 页码
+     * @param request
+     * @return
+     */
+    List<User> recommendUsers(Long pageSize, Long pageNum, HttpServletRequest request);
 }
