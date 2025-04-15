@@ -18,6 +18,13 @@ spring:
       password: "redis_3YpaAR"
       database: 0
       host: 120.26.19.193
+    # 自定义配置
+    redisson:
+      database: 1
+      port: 6379
+      password: "redis_3YpaAR"
+      host: 120.26.19.193
+
 server:
   port: 8080
   servlet:
