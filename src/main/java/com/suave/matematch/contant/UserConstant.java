@@ -3,6 +3,7 @@ package com.suave.matematch.contant;
 /**
  * 用户常量
  *
+ * @author Suave
  */
 public interface UserConstant {
 
@@ -17,8 +18,6 @@ public interface UserConstant {
      * 默认权限
      */
     int DEFAULT_ROLE = 0;
-
-    // https://space.bilibili.com/12890453/
 
     /**
      * 管理员权限

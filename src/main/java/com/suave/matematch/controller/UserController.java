@@ -58,7 +58,7 @@ public class UserController {
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword, planetCode)) {
             return null;
         }
-        long result = userService.userRegister(userAccount, userPassword, checkPassword, planetCode);
+        long result = userService.userRegister(userAccount, userPassword, checkPassword);
         return ResultUtils.success(result);
     }
 
