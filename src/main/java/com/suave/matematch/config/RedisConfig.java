@@ -22,7 +22,7 @@ import org.springframework.session.data.redis.config.annotation.web.http.EnableR
  * @author Suave
  */
 @Configuration
-@EnableRedisHttpSession(maxInactiveIntervalInSeconds= 3600*24)
+@EnableRedisHttpSession(maxInactiveIntervalInSeconds= 3600)
 public class RedisConfig {
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory){
@@ -44,31 +44,8 @@ public class RedisConfig {
         //创建JSON序列化器
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-//        //必须设置，否则无法序列化实体类对象
-//        objectMapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance, ObjectMapper.DefaultTyping.NON_FINAL);
         return new GenericJackson2JsonRedisSerializer(objectMapper);
     }
-
-
-    /**
-     * 显式设置 Spring Session 使用你的序列化器
-     */
-    @Bean
-    public RedisSerializer<Object> springSessionDefaultRedisSerializer() {
-        return getJsonRedisSerializer();
-    }
-
-    private GenericJackson2JsonRedisSerializer getJsonRedisSerializer(){
-        ObjectMapper objectMapper = new ObjectMapper();
-        // 尝试不同的 DefaultTyping 选项
-        objectMapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance,
-                ObjectMapper.DefaultTyping.OBJECT_AND_NON_CONCRETE, // 或其他选项
-                JsonTypeInfo.As.PROPERTY);
-        objectMapper.registerModule(new JavaTimeModule());
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        return new GenericJackson2JsonRedisSerializer(objectMapper);
-    }
-
 
 
 }

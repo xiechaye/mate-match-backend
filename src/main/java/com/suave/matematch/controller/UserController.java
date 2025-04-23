@@ -11,18 +11,13 @@ import com.suave.matematch.model.domain.request.UserRegisterRequest;
 import com.suave.matematch.common.ResultUtils;
 import com.suave.matematch.exception.BusinessException;
 import com.suave.matematch.service.UserService;
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.boot.context.properties.bind.DefaultValue;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
 
@@ -34,7 +29,7 @@ import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
 @RestController
 @RequestMapping("/user")
 @AllArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173"}, allowCredentials = "true")
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class UserController {
 
     private final UserService userService;

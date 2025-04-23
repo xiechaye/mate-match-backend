@@ -1,17 +1,19 @@
 package com.suave.matematch.mapper;
 
-import com.suave.matematch.model.domain.User;
+import com.suave.matematch.model.domain.Team;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 用户 Mapper
+ * 队伍 Mapper
  *
  * @author Suave
  */
 @Mapper
-public interface UserMapper extends BaseMapper<User> {
+public interface TeamMapper extends BaseMapper<Team> {
 
 }
+
+
 
 
