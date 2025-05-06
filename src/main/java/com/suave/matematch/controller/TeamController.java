@@ -9,6 +9,7 @@ import com.suave.matematch.exception.BusinessException;
 import com.suave.matematch.model.domain.Team;
 import com.suave.matematch.model.domain.User;
 import com.suave.matematch.model.domain.request.TeamAddRequest;
+import com.suave.matematch.model.domain.request.TeamJoinRequest;
 import com.suave.matematch.model.domain.request.TeamQuery;
 import com.suave.matematch.model.domain.request.TeamUpdateRequest;
 import com.suave.matematch.model.domain.vo.TeamVo;
@@ -133,5 +134,30 @@ public class TeamController {
 
         List<TeamVo> teamVoList = teamService.getTeamList(teamQuery, isAdmin);
         return ResultUtils.success(teamVoList);
+    }
+
+    /**
+     * 加入队伍
+     * @param teamJoinRequest 队伍加入参数
+     * @param request
+     * @return
+     */
+    @PostMapping("/join")
+    public BaseResponse<Boolean> joinTeam(@RequestBody TeamJoinRequest teamJoinRequest,
+                                          HttpServletRequest request) {
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+
+        // 判断请求参数是否为空
+        if (teamJoinRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        Boolean joined = teamService.joinTeam(teamJoinRequest, loginUser);
+
+        return ResultUtils.success(joined);
     }
 }

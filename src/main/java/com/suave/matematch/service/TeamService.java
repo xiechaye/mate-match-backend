@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.suave.matematch.model.domain.Team;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.suave.matematch.model.domain.User;
+import com.suave.matematch.model.domain.request.TeamJoinRequest;
 import com.suave.matematch.model.domain.request.TeamQuery;
 import com.suave.matematch.model.domain.request.TeamUpdateRequest;
 import com.suave.matematch.model.domain.vo.TeamVo;
@@ -38,4 +39,12 @@ public interface TeamService extends IService<Team> {
      * @return
      */
     boolean updateTeamById(TeamUpdateRequest teamUpdateRequest, User loginUser);
+
+    /**
+     * 用户加入队伍
+     * @param teamJoinRequest
+     * @param loginUser
+     * @return
+     */
+    Boolean joinTeam(TeamJoinRequest teamJoinRequest, User loginUser);
 }

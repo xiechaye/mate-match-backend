@@ -12,7 +12,11 @@ public enum ErrorCode {
     NOT_LOGIN(40100, "未登录", ""),
     NO_AUTH(40101, "无权限", ""),
     USER_NOT_EXIST(40102, "用户不存在", ""),
-    TEAM_NOT_EXIST(40203, "队伍不存在", ""),
+    TEAM_NOT_EXIST(40201, "队伍不存在", ""),
+    TEAM_FILLED(40202, "队伍已满", ""),
+    TEAM_EXPIRED(40203, "队伍已过期", ""),
+    TEAM_USER_EXIST(40204, "用户已在队伍中", ""),
+    TEAM_PRIVATE(40205, "队伍为私密队伍", ""),
     SYSTEM_ERROR(50000, "系统内部异常", "");
 
 

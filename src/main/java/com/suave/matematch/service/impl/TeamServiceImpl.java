@@ -10,6 +10,7 @@ import com.suave.matematch.model.domain.Team;
 import com.suave.matematch.model.domain.User;
 import com.suave.matematch.model.domain.UserTeam;
 import com.suave.matematch.model.domain.enums.TeamStatusEnum;
+import com.suave.matematch.model.domain.request.TeamJoinRequest;
 import com.suave.matematch.model.domain.request.TeamQuery;
 import com.suave.matematch.model.domain.request.TeamUpdateRequest;
 import com.suave.matematch.model.domain.vo.TeamVo;
@@ -195,6 +196,12 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
     }
 
 
+    /**
+     * 更新队伍
+     * @param teamUpdateRequest 队伍信息
+     * @param loginUser 登录用户
+     * @return
+     */
     public boolean updateTeamById(TeamUpdateRequest teamUpdateRequest, User loginUser) {
         boolean isAdmin = userService.isAdmin(loginUser);
 
@@ -242,6 +249,69 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
 
         //5. 更新成功
         return this.updateById(team);
+    }
+
+    /**
+     * 用户加入队伍
+     * @param teamJoinRequest
+     * @param loginUser
+     * @return
+     */
+    public Boolean joinTeam(TeamJoinRequest teamJoinRequest, User loginUser) {
+        // todo 优化同一时间重复点击加入可能会重复加入
+        // 队伍必须存在，只能加入未满、或未过期的队伍
+        // 根据队伍id获取队伍信息
+        Team team = this.getById(teamJoinRequest.getTeamId());
+        if(team == null) {
+            throw new BusinessException(ErrorCode.TEAM_NOT_EXIST);
+        }
+
+        // 获取队伍最大人数
+        Integer maxNum = team.getMaxNum();
+        // 获取队伍当前人数
+        long current = userTeamService.count(new QueryWrapper<UserTeam>().eq("teamId", team.getId()));
+        if (current >= maxNum) {
+            throw new BusinessException(ErrorCode.TEAM_FILLED, "队伍已满");
+        }
+
+        // 获取队伍过期时间
+        Date expireTime = team.getExpireTime();
+        if(expireTime.before(new Date())) {
+            throw new BusinessException(ErrorCode.TEAM_EXPIRED, "队伍已过期");
+        }
+
+        // 不能重复加入已加入的队伍（幂等性)
+        long count = userTeamService.count(new QueryWrapper<UserTeam>().eq("userId", loginUser.getId())
+                .eq("teamId", team.getId()));
+        if(count > 0) {
+            throw new BusinessException(ErrorCode.TEAM_USER_EXIST, "已加入该队伍");
+        }
+
+        // 禁止加入私有的队伍
+        Integer status = team.getStatus();
+        if(status == TeamStatusEnum.PRIVATE.getValue()) {
+            throw new BusinessException(ErrorCode.TEAM_PRIVATE, "队伍为私密队伍");
+        }
+
+        // 如果加入的队伍是加密的，必须密码匹配才可以
+        if(status == TeamStatusEnum.SECRET.getValue()) {
+            String password = teamJoinRequest.getPassword();
+            if(StringUtils.isBlank(password) || !password.equals(team.getPassword())) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码错误");
+            }
+        }
+
+        // 新增队伍-用户关联信息
+        UserTeam userTeam = new UserTeam();
+        userTeam.setTeamId(team.getId());
+        userTeam.setUserId(loginUser.getId());
+        userTeam.setJoinTime(new Date());
+        int insert = userTeamMapper.insert(userTeam);
+        if(insert <= 0) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "加入队伍失败");
+        }
+
+        return true;
     }
 }
 
