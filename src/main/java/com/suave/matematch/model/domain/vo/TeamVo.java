@@ -1,26 +1,20 @@
-package com.suave.matematch.model.domain.request;
+package com.suave.matematch.model.domain.vo;
 
-import com.suave.matematch.common.PageRequest;
+import com.suave.matematch.model.domain.User;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
-import java.io.Serial;
 import java.util.Date;
+import java.util.List;
 
-@EqualsAndHashCode(callSuper = true)
+/**
+ * @author Suave
+ */
 @Data
-public class TeamQuery extends PageRequest {
-    @Serial
-    private static final long serialVersionUID = 7249932929071404994L;
+public class TeamVo {
     /**
      * id
      */
     private Long id;
-
-    /**
-     * 查询关键字
-     */
-    private String searchText;
 
     /**
      * 队伍名称
@@ -51,4 +45,19 @@ public class TeamQuery extends PageRequest {
      *  0-公开， 1-私有， 2-加密
      */
     private Integer status;
+
+    /**
+     * 创建时间
+     */
+    private Date createTime;
+
+    /**
+     * 更新时间
+     */
+    private Date updateTime;
+
+    /**
+     * 队伍成员信息
+     */
+    private List<User> userList;
 }

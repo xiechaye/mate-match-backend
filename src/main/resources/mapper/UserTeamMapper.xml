@@ -19,4 +19,14 @@
         joinTime,createTime,updateTime,
         isDelete
     </sql>
+    <select id="getUserListByTeamId" resultType="com.suave.matematch.model.domain.User">
+        select u.id, u.avatarUrl, u.username
+        from user u
+                 join user_team ut on u.id = ut.userId
+                 join team t on t.id = ut.teamId
+        where t.id = #{teamId}
+          and u.isDelete = 0
+          and ut.isDelete = 0
+        order by u.id desc;
+    </select>
 </mapper>

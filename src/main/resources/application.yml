@@ -63,4 +63,6 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+    # 开启动态请求参数，true-开启，false-关闭
+    enable-dynamic-parameter: true
 

@@ -1,21 +1,29 @@
 package com.suave.matematch.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.suave.matematch.common.ErrorCode;
 import com.suave.matematch.exception.BusinessException;
+import com.suave.matematch.mapper.UserTeamMapper;
 import com.suave.matematch.model.domain.Team;
+import com.suave.matematch.model.domain.User;
 import com.suave.matematch.model.domain.UserTeam;
-import com.suave.matematch.model.domain.enums.TeamValueEnum;
+import com.suave.matematch.model.domain.enums.TeamStatusEnum;
+import com.suave.matematch.model.domain.request.TeamQuery;
+import com.suave.matematch.model.domain.vo.TeamVo;
 import com.suave.matematch.service.TeamService;
 import com.suave.matematch.mapper.TeamMapper;
 import com.suave.matematch.service.UserTeamService;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -25,7 +33,7 @@ import java.util.Optional;
 @AllArgsConstructor
 public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements TeamService{
     private final UserTeamService userTeamService;
-
+    private final UserTeamMapper userTeamMapper;
     /**
      * 创建队伍
      * @param team 队伍信息
@@ -60,13 +68,13 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         }
         //   4. status是否公开（int）不传默认是0（公开）
         int status = Optional.ofNullable(team.getStatus()).orElse(0);
-        TeamValueEnum teamValueEnum = TeamValueEnum.getEnumByValue(status);
-        if(teamValueEnum == null) {
+        TeamStatusEnum teamStatusEnum = TeamStatusEnum.getEnumByValue(status);
+        if(teamStatusEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍状态错误");
         }
         //   5. 如果status是加密状态，一定要有密码，且密码<=32
         String password = team.getPassword();
-        if (status == TeamValueEnum.SECRET.getValue() && StringUtils.isBlank(password) || password.length() > 32) {
+        if (status == TeamStatusEnum.SECRET.getValue() && StringUtils.isBlank(password) || password.length() > 32) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码设置错误");
         }
         //   6. 超时时间>当前时间
@@ -101,6 +109,83 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         }
 
         return teamId;
+    }
+
+    /**
+     * 查询队伍列表
+     * @param teamQuery 队伍信息
+     * @param page 分页参数
+     * @return
+     */
+    public List<TeamVo> getTeamList(TeamQuery teamQuery, Page<Team> page, Boolean isAdmin) {
+        QueryWrapper<Team> qw = new QueryWrapper<>();
+        // 从请求参数中取出队伍名称等查询条件，如果存在则作为查询条件
+        // 根据id查询
+        Long id = teamQuery.getId();
+        if(id != null && id > 0) {
+            qw.eq("id", id);
+        }
+        // 根据关键字对队伍名称和描述进行模糊查询
+        String searchText = teamQuery.getSearchText();
+        if(StringUtils.isNotBlank(searchText)) {
+            qw.and(queryWrapper -> queryWrapper.like("name", searchText)
+                    .or().like("description", searchText));
+        }
+        // 根据队伍名称查询
+        String name = teamQuery.getName();
+        if(StringUtils.isNotBlank(name)) {
+            qw.eq("name", name);
+        }
+        // 根据队伍描述查询
+        String description = teamQuery.getDescription();
+        if(StringUtils.isNotBlank(description)) {
+            qw.eq("description", description);
+        }
+        // 根据最大人数查询
+        Integer maxNum = teamQuery.getMaxNum();
+        if(maxNum != null && maxNum > 0) {
+            qw.eq("maxNum", maxNum);
+        }
+        // 根据过期时间查询
+        Date expireTime = teamQuery.getExpireTime();
+        if (expireTime != null) {
+            qw.and(queryWrapper -> queryWrapper.gt("expireTime", expireTime)
+                    .or().isNull("expireTime"));
+        } else {
+            // 当expireTime为null时，可能不需要添加过期时间条件
+            // 或者只添加isNull条件
+            qw.or().isNull("expireTime");
+        }
+        // 根据创建者id查询
+        Long userId = teamQuery.getUserId();
+        if(userId != null && userId > 0) {
+            qw.eq("userId", userId);
+        }
+        // 根据队伍状态查询
+        Integer status = teamQuery.getStatus();
+        if(status == null || status < 0) {
+            status = 0;
+        }
+        TeamStatusEnum teamStatus = TeamStatusEnum.getEnumByValue(status);
+        if(teamStatus == null) {
+            teamStatus = TeamStatusEnum.PUBLIC;
+        }
+        // 只有管理员可以查询私有队伍
+        if(!isAdmin && teamStatus == TeamStatusEnum.PRIVATE ) {
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+        qw.eq("status", teamStatus.getValue());
+
+        Page<Team> teamPage = this.page(page, qw);
+
+        return teamPage.getRecords().stream()
+                .map(team -> {
+                    TeamVo teamVo = new TeamVo();
+                    BeanUtils.copyProperties(team, teamVo);
+                    List<User> userList = userTeamMapper.getUserListByTeamId(team.getId());
+                    teamVo.setUserList(userList);
+                    return teamVo;
+                }).toList();
     }
 }
 

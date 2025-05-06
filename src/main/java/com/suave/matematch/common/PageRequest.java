@@ -16,7 +16,7 @@ public class PageRequest implements Serializable {
     /**
      * 当前页码
      */
-    protected Integer pageNum = 1;
+    protected Integer pageNum = 0;
     /**
      * 每页显示的条数
      */

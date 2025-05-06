@@ -10,6 +10,7 @@ import com.suave.matematch.model.domain.Team;
 import com.suave.matematch.model.domain.User;
 import com.suave.matematch.model.domain.request.TeamAddRequest;
 import com.suave.matematch.model.domain.request.TeamQuery;
+import com.suave.matematch.model.domain.vo.TeamVo;
 import com.suave.matematch.service.TeamService;
 import com.suave.matematch.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -113,18 +114,17 @@ public class TeamController {
      * @return
      */
     @GetMapping("/list")
-    public BaseResponse<List<Team>> getTeamList(TeamQuery teamQuery) {
+    public BaseResponse<List<TeamVo>> getTeamList(TeamQuery teamQuery, HttpServletRequest request) {
         if (teamQuery == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        Team team = new Team();
-        BeanUtils.copyProperties(teamQuery, team);
-        QueryWrapper<Team> qw = new QueryWrapper<>(team);
-        List<Team> list = teamService.list(qw);
-        if(list == null || list.isEmpty()) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "获取队伍列表失败");
-        }
-        return ResultUtils.success(list);
+
+        boolean isAdmin = userService.isAdmin(request);
+        // 分页参数
+        Page<Team> page = new Page<>(teamQuery.getPageNum(), teamQuery.getPageSize());
+
+        List<TeamVo> teamVoList = teamService.getTeamList(teamQuery, page, isAdmin);
+        return ResultUtils.success(teamVoList);
     }
 
     /**
