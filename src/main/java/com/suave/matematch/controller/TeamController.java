@@ -17,6 +17,7 @@ import com.suave.matematch.service.TeamService;
 import com.suave.matematch.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
+import org.apache.ibatis.annotations.Delete;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,23 +61,6 @@ public class TeamController {
     }
 
     /**
-     * 删除队伍
-     * @param id 队伍id
-     * @return
-     */
-    @PostMapping("/delete")
-    public BaseResponse<Boolean> deleteTeam(@RequestBody Long id) {
-        if(id == null || id <= 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        boolean remove = teamService.removeById(id);
-        if(!remove) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍失败");
-        }
-        return ResultUtils.success(true);
-    }
-
-    /**
      * 更新队伍
      * @param teamUpdateRequest 队伍信息
      * @param request
@@ -94,10 +78,7 @@ public class TeamController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         boolean update = teamService.updateTeamById(teamUpdateRequest, loginUser);
-        if(!update) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新队伍失败");
-        }
-        return ResultUtils.success(true);
+        return ResultUtils.success(update);
     }
 
     /**
@@ -173,9 +154,26 @@ public class TeamController {
         }
 
         boolean quited = teamService.quitTeam(teamId, loginUser.getId());
-        if(!quited) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "退出队伍失败");
+        return ResultUtils.success(quited);
+    }
+
+    /**
+     * 删除队伍
+     * @param teamId 队伍id
+     * @return
+     */
+    @DeleteMapping("/delete/{teamId}")
+    public BaseResponse<Boolean> deleteTeam(@PathVariable Long teamId, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        if(loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
-        return ResultUtils.success(true);
+
+        if(teamId == null || teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        boolean deleted = teamService.deleteTeam(teamId, loginUser.getId());
+        return ResultUtils.success(deleted);
     }
 }

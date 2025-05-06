@@ -245,7 +245,11 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         BeanUtils.copyProperties(teamUpdateRequest, team);
 
         //5. 更新成功
-        return this.updateById(team);
+        boolean updated = this.updateById(team);
+        if (!updated) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新队伍失败");
+        }
+        return true;
     }
 
     /**
@@ -338,11 +342,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             if(!remove) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍失败");
             }
-            // 删除用户-队伍关联信息
-            remove = userTeamService.remove(new QueryWrapper<UserTeam>().eq("teamId", teamId));
-            if(!remove) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍用户关联表失败");
-            }
         } else {
             //3. 如果队伍队伍不止一人
             if(Objects.equals(team.getUserId(), userId)) {
@@ -355,18 +354,46 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
                 if (!update) {
                     throw new BusinessException(ErrorCode.SYSTEM_ERROR, "队伍权限转移失败");
                 }
-                // 删除队伍-用户关联信息
-                boolean remove = userTeamService.removeById(userId);
-                if (!remove) {
-                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍用户关联表失败");
-                }
-            }else {
-                //   2. 非队长，直接退出队伍
-                boolean remove = userTeamService.removeById(userId);
-                if (!remove) {
-                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍用户关联表失败");
-                }
             }
+        }
+        // 删除用户-队伍关联信息
+        boolean remove = userTeamService.remove(new QueryWrapper<UserTeam>().eq("teamId", teamId));
+        if(!remove) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍用户关联表失败");
+        }
+        return true;
+    }
+
+    /**
+     * 队长解散队伍
+     * @param teamId 队伍id
+     * @param userId 用户id
+     * @return
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteTeam(Long teamId, Long userId) {
+        // 1. 校验请求参数
+        if (teamId == null || teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍id错误");
+        }
+        //2. 检验队伍是否存在
+        Team team = this.getById(teamId);
+        if (team == null) {
+            throw new BusinessException(ErrorCode.TEAM_NOT_EXIST, "队伍不存在");
+        }
+        //3. 检验你是不是队长
+        if(!team.getUserId().equals(userId)) {
+            throw new BusinessException(ErrorCode.NO_AUTH, "你不是队长");
+        }
+        //4. 移除所有加入队伍的关联信息
+        boolean remove = userTeamService.remove(new QueryWrapper<UserTeam>().eq("teamId", teamId));
+        if(!remove) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍用户关联表失败");
+        }
+        //5. 删除队伍
+        remove = this.removeById(teamId);
+        if(!remove) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍失败");
         }
         return true;
     }
