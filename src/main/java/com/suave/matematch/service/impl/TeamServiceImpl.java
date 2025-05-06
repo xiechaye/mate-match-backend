@@ -25,10 +25,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
 * @author Suave
@@ -311,6 +308,63 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "加入队伍失败");
         }
 
+        return true;
+    }
+
+    /**
+     * 用户退出队伍
+     * @param teamId 队伍id
+     * @param userId 用户id
+     * @return
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean quitTeam(Long teamId, Long userId) {
+        // 1. 校验请求参数
+        if(teamId == null || teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍id错误");
+        }
+
+        //2. 如果队伍只剩一人队伍解散
+        long count = userTeamService.count(new QueryWrapper<UserTeam>().eq("teamId", teamId));
+        if(count <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍没有成员");
+        } else if(count == 1) {
+            // 删除队伍
+            boolean remove = this.removeById(teamId);
+            if(!remove) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍失败");
+            }
+            // 删除用户-队伍关联信息
+            remove = userTeamService.remove(new QueryWrapper<UserTeam>().eq("teamId", teamId));
+            if(!remove) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍用户关联表失败");
+            }
+        } else {
+            //3. 如果队伍队伍不止一人
+            Team team = this.getById(teamId);
+            if(Objects.equals(team.getUserId(), userId)) {
+                //   1. 队长退出队伍，队长权限转移给第二早加入的用户
+                // 获取队伍中第二早加入的用户
+                Long secondUserId = userTeamMapper.getSecondUserIdByTeamId(teamId);
+                // 权限装让
+                team.setUserId(secondUserId);
+                boolean update = this.updateById(team);
+                if (!update) {
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "队伍权限转移失败");
+                }
+                // 删除队伍-用户关联信息
+                boolean remove = userTeamService.removeById(userId);
+                if (!remove) {
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍用户关联表失败");
+                }
+            }else {
+                //   2. 非队长，直接退出队伍
+                boolean remove = userTeamService.removeById(userId);
+                if (!remove) {
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍用户关联表失败");
+                }
+            }
+        }
         return true;
     }
 }

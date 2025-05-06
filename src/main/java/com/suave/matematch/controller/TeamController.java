@@ -160,4 +160,22 @@ public class TeamController {
 
         return ResultUtils.success(joined);
     }
+
+    @DeleteMapping("/quit/{teamId}")
+    public BaseResponse<Boolean> quitTeam(@PathVariable Long teamId, HttpServletRequest request){
+        User loginUser = userService.getLoginUser(request);
+        if(loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+
+        if(teamId == null || teamId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        boolean quited = teamService.quitTeam(teamId, loginUser.getId());
+        if(!quited) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "退出队伍失败");
+        }
+        return ResultUtils.success(true);
+    }
 }

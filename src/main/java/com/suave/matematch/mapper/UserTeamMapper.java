@@ -16,6 +16,8 @@ import java.util.List;
 public interface UserTeamMapper extends BaseMapper<UserTeam> {
 
     public List<User> getUserListByTeamId(Long teamId);
+
+    Long getSecondUserIdByTeamId(Long teamId);
 }
 
 

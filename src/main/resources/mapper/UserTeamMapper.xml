@@ -29,4 +29,11 @@
           and ut.isDelete = 0
         order by u.id desc;
     </select>
+    <select id="getSecondUserIdByTeamId" resultType="java.lang.Long">
+        SELECT userId
+        FROM user_team
+        WHERE teamId = #{teamId}
+        ORDER BY id
+        LIMIT 1 OFFSET 1
+    </select>
 </mapper>
