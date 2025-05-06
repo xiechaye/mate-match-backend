@@ -11,10 +11,13 @@ import com.suave.matematch.model.domain.User;
 import com.suave.matematch.model.domain.UserTeam;
 import com.suave.matematch.model.domain.enums.TeamStatusEnum;
 import com.suave.matematch.model.domain.request.TeamQuery;
+import com.suave.matematch.model.domain.request.TeamUpdateRequest;
 import com.suave.matematch.model.domain.vo.TeamVo;
 import com.suave.matematch.service.TeamService;
 import com.suave.matematch.mapper.TeamMapper;
+import com.suave.matematch.service.UserService;
 import com.suave.matematch.service.UserTeamService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -34,6 +37,7 @@ import java.util.Optional;
 public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements TeamService{
     private final UserTeamService userTeamService;
     private final UserTeamMapper userTeamMapper;
+    private final UserService userService;
     /**
      * 创建队伍
      * @param team 队伍信息
@@ -114,10 +118,12 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
     /**
      * 查询队伍列表
      * @param teamQuery 队伍信息
-     * @param page 分页参数
+     * @param isAdmin 是否是管理员
      * @return
      */
-    public List<TeamVo> getTeamList(TeamQuery teamQuery, Page<Team> page, Boolean isAdmin) {
+    public List<TeamVo> getTeamList(TeamQuery teamQuery, Boolean isAdmin) {
+        // 分页参数
+        Page<Team> page = new Page<>(teamQuery.getPageNum(), teamQuery.getPageSize());
         QueryWrapper<Team> qw = new QueryWrapper<>();
         // 从请求参数中取出队伍名称等查询条件，如果存在则作为查询条件
         // 根据id查询
@@ -162,10 +168,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             qw.eq("userId", userId);
         }
         // 根据队伍状态查询
-        Integer status = teamQuery.getStatus();
-        if(status == null || status < 0) {
-            status = 0;
-        }
+        int status = Optional.ofNullable(teamQuery.getStatus()).orElse(0);
         TeamStatusEnum teamStatus = TeamStatusEnum.getEnumByValue(status);
         if(teamStatus == null) {
             teamStatus = TeamStatusEnum.PUBLIC;
@@ -180,12 +183,65 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
 
         return teamPage.getRecords().stream()
                 .map(team -> {
+                    if(team == null) {
+                        return null;
+                    }
                     TeamVo teamVo = new TeamVo();
                     BeanUtils.copyProperties(team, teamVo);
                     List<User> userList = userTeamMapper.getUserListByTeamId(team.getId());
                     teamVo.setUserList(userList);
                     return teamVo;
                 }).toList();
+    }
+
+
+    public boolean updateTeamById(TeamUpdateRequest teamUpdateRequest, User loginUser) {
+        boolean isAdmin = userService.isAdmin(loginUser);
+
+        //2. 查询队伍是否存在
+        Long id = teamUpdateRequest.getId();
+        if(id == null || id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍id错误");
+        }
+        Team team = this.getById(id);
+        if(team == null) {
+            throw new BusinessException(ErrorCode.TEAM_NOT_EXIST);
+        }
+        //3. 只有管理员或者队伍的创建者可以修改
+        if(!isAdmin && !team.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH);
+        }
+
+        //4. 如果用户传入的新值和旧值一致就不用update（降低数据库使用次数）
+        //   1. 队伍人数>1且<=20
+        Integer maxNum = teamUpdateRequest.getMaxNum();
+        if(maxNum != null && (maxNum < 1 || maxNum > 20)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍人数不合法");
+        }
+        //   2. 队伍标题长度<20
+        String name = teamUpdateRequest.getName();
+        if(StringUtils.isNotBlank(name) && name.length() >= 20){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍标题错误");
+        }
+        //   3. 描述<=512
+        String description = teamUpdateRequest.getDescription();
+        if(StringUtils.isNotBlank(description) && description.length() > 512) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍描述错误");
+        }
+        //  4. status是否为加密
+        int status = Optional.ofNullable(teamUpdateRequest.getStatus()).orElse(0);
+        String password = teamUpdateRequest.getPassword();
+        if (status == TeamStatusEnum.SECRET.getValue() && StringUtils.isBlank(password) || password.length() > 32) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码设置错误");
+        }
+        // 5. status是否公开,如果是公开的就不需要密码
+        if (status == TeamStatusEnum.PUBLIC.getValue()) {
+            teamUpdateRequest.setPassword(null);
+        }
+        BeanUtils.copyProperties(teamUpdateRequest, team);
+
+        //5. 更新成功
+        return this.updateById(team);
     }
 }
 

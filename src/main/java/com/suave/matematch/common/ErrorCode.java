@@ -12,6 +12,7 @@ public enum ErrorCode {
     NOT_LOGIN(40100, "未登录", ""),
     NO_AUTH(40101, "无权限", ""),
     USER_NOT_EXIST(40102, "用户不存在", ""),
+    TEAM_NOT_EXIST(40203, "队伍不存在", ""),
     SYSTEM_ERROR(50000, "系统内部异常", "");
 
 

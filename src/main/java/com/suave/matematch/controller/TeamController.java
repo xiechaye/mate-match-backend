@@ -10,6 +10,7 @@ import com.suave.matematch.model.domain.Team;
 import com.suave.matematch.model.domain.User;
 import com.suave.matematch.model.domain.request.TeamAddRequest;
 import com.suave.matematch.model.domain.request.TeamQuery;
+import com.suave.matematch.model.domain.request.TeamUpdateRequest;
 import com.suave.matematch.model.domain.vo.TeamVo;
 import com.suave.matematch.service.TeamService;
 import com.suave.matematch.service.UserService;
@@ -76,15 +77,22 @@ public class TeamController {
 
     /**
      * 更新队伍
-     * @param team 队伍信息
+     * @param teamUpdateRequest 队伍信息
+     * @param request
      * @return
      */
     @PostMapping("/update")
-    public BaseResponse<Boolean> updateTeam(@RequestBody Team team) {
-        if(team == null || team.getId() == null || team.getId() <= 0) {
+    public BaseResponse<Boolean> updateTeam(@RequestBody TeamUpdateRequest teamUpdateRequest,
+                                            HttpServletRequest request) {
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        if(loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        if(teamUpdateRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        boolean update = teamService.updateById(team);
+        boolean update = teamService.updateTeamById(teamUpdateRequest, loginUser);
         if(!update) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新队伍失败");
         }
@@ -115,39 +123,15 @@ public class TeamController {
      */
     @GetMapping("/list")
     public BaseResponse<List<TeamVo>> getTeamList(TeamQuery teamQuery, HttpServletRequest request) {
+        //1. 判断请求参数是否为空
         if (teamQuery == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
 
         boolean isAdmin = userService.isAdmin(request);
-        // 分页参数
-        Page<Team> page = new Page<>(teamQuery.getPageNum(), teamQuery.getPageSize());
 
-        List<TeamVo> teamVoList = teamService.getTeamList(teamQuery, page, isAdmin);
+
+        List<TeamVo> teamVoList = teamService.getTeamList(teamQuery, isAdmin);
         return ResultUtils.success(teamVoList);
-    }
-
-    /**
-     * 分页查询队伍列表
-     * @param teamQuery 队伍查询参数
-     * @return
-     */
-    @GetMapping("/list/page")
-    public BaseResponse<List<Team>> getTeamsByPage(TeamQuery teamQuery) {
-        if(teamQuery == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        Team team = new Team();
-        BeanUtils.copyProperties(teamQuery, team);
-
-        Page<Team> page = new Page<>(teamQuery.getPageNum(), teamQuery.getPageSize());
-
-        QueryWrapper<Team> qw = new QueryWrapper<>(team);
-        Page<Team> result = teamService.page(page, qw);
-        if(result == null) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "获取队伍列表失败");
-        }
-        return ResultUtils.success(result.getRecords());
-
     }
 }
