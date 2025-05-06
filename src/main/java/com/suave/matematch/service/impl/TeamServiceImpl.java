@@ -323,6 +323,10 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         if(teamId == null || teamId <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍id错误");
         }
+        Team team = this.getById(teamId);
+        if(team == null) {
+            throw new BusinessException(ErrorCode.TEAM_NOT_EXIST, "队伍不存在");
+        }
 
         //2. 如果队伍只剩一人队伍解散
         long count = userTeamService.count(new QueryWrapper<UserTeam>().eq("teamId", teamId));
@@ -341,7 +345,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             }
         } else {
             //3. 如果队伍队伍不止一人
-            Team team = this.getById(teamId);
             if(Objects.equals(team.getUserId(), userId)) {
                 //   1. 队长退出队伍，队长权限转移给第二早加入的用户
                 // 获取队伍中第二早加入的用户
