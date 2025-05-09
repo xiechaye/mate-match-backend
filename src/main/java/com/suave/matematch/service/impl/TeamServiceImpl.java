@@ -81,7 +81,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         }
         //   6. 超时时间>当前时间
         Date expireTime = team.getExpireTime();
-        if(expireTime == null || expireTime.before(new Date())) {
+        if(expireTime.before(new Date())) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "超时时间错误");
         }
         //   7. 用户最多创建5个队伍
@@ -93,7 +93,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户创建队伍数量超过限制");
         }
         //4. 插入队伍信息到队伍表
-        team.setExpireTime(new Date());
         boolean save = this.save(team);
         if(!save) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "创建队伍失败");
@@ -151,15 +150,10 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             qw.eq("maxNum", maxNum);
         }
         // 根据过期时间查询
-        Date expireTime = teamQuery.getExpireTime();
-        if (expireTime != null) {
-            qw.and(queryWrapper -> queryWrapper.gt("expireTime", expireTime)
-                    .or().isNull("expireTime"));
-        } else {
-            // 当expireTime为null时，可能不需要添加过期时间条件
-            // 或者只添加isNull条件
-            qw.or().isNull("expireTime");
-        }
+        Date expireTime = Optional.ofNullable(teamQuery.getExpireTime()).orElse(new Date());
+        qw.and(queryWrapper -> queryWrapper.gt("expireTime", expireTime)
+                .or().isNull("expireTime"));
+
         // 根据创建者id查询
         Long userId = teamQuery.getUserId();
         if(userId != null && userId > 0) {
