@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 
 import java.io.Serial;
 import java.util.Date;
+import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -16,6 +17,11 @@ public class TeamQuery extends PageRequest {
      * id
      */
     private Long id;
+
+    /**
+     * 队伍id集合
+     */
+    private List<Long> idList;
 
     /**
      * 查询关键字

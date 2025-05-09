@@ -90,7 +90,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         qw.eq("userId", userId);
         long count = this.count(qw);
         if(count >= 5) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户创建队伍数量超过限制");
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "用户创建队伍数量超过限制");
         }
         //4. 插入队伍信息到队伍表
         boolean save = this.save(team);
@@ -134,6 +134,11 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             qw.and(queryWrapper -> queryWrapper.like("name", searchText)
                     .or().like("description", searchText));
         }
+        // 根据队伍id集合查询
+        List<Long> idList = teamQuery.getIdList();
+        if(idList != null && !idList.isEmpty()) {
+            qw.in("id", idList);
+        }
         // 根据队伍名称查询
         String name = teamQuery.getName();
         if(StringUtils.isNotBlank(name)) {
@@ -150,9 +155,11 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             qw.eq("maxNum", maxNum);
         }
         // 根据过期时间查询
-        Date expireTime = Optional.ofNullable(teamQuery.getExpireTime()).orElse(new Date());
-        qw.and(queryWrapper -> queryWrapper.gt("expireTime", expireTime)
-                .or().isNull("expireTime"));
+        if (!isAdmin) {
+            Date expireTime = Optional.ofNullable(teamQuery.getExpireTime()).orElse(new Date());
+            qw.and(queryWrapper -> queryWrapper.gt("expireTime", expireTime)
+                    .or().isNull("expireTime"));
+        }
 
         // 根据创建者id查询
         Long userId = teamQuery.getUserId();

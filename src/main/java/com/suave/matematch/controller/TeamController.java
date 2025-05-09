@@ -8,6 +8,7 @@ import com.suave.matematch.common.ResultUtils;
 import com.suave.matematch.exception.BusinessException;
 import com.suave.matematch.model.domain.Team;
 import com.suave.matematch.model.domain.User;
+import com.suave.matematch.model.domain.UserTeam;
 import com.suave.matematch.model.domain.request.TeamAddRequest;
 import com.suave.matematch.model.domain.request.TeamJoinRequest;
 import com.suave.matematch.model.domain.request.TeamQuery;
@@ -15,13 +16,17 @@ import com.suave.matematch.model.domain.request.TeamUpdateRequest;
 import com.suave.matematch.model.domain.vo.TeamVo;
 import com.suave.matematch.service.TeamService;
 import com.suave.matematch.service.UserService;
+import com.suave.matematch.service.UserTeamService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.apache.ibatis.annotations.Delete;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/team")
@@ -31,6 +36,7 @@ public class TeamController {
 
     private final TeamService teamService;
     private final UserService userService;
+    private final UserTeamService userTeamService;
 
     /**
      * 添加队伍
@@ -142,6 +148,11 @@ public class TeamController {
         return ResultUtils.success(joined);
     }
 
+    /**
+     * 退出队伍
+     * @param teamId 队伍id
+     * @return
+     */
     @DeleteMapping("/quit/{teamId}")
     public BaseResponse<Boolean> quitTeam(@PathVariable Long teamId, HttpServletRequest request){
         User loginUser = userService.getLoginUser(request);
@@ -175,5 +186,57 @@ public class TeamController {
 
         boolean deleted = teamService.deleteTeam(teamId, loginUser.getId());
         return ResultUtils.success(deleted);
+    }
+
+    /**
+     * 查询个人创建队伍列表
+     * @param teamQuery 队伍查询参数
+     * @return
+     */
+    @GetMapping("/list/create")
+    public BaseResponse<List<TeamVo>> getMyTeamList(TeamQuery teamQuery, HttpServletRequest request) {
+        //1. 判断请求参数是否为空
+        if (teamQuery == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        User loginUser = userService.getLoginUser(request);
+        if(loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        teamQuery.setUserId(loginUser.getId());
+        List<TeamVo> teamVoList = teamService.getTeamList(teamQuery, true);
+        return ResultUtils.success(teamVoList);
+    }
+
+    /**
+     * 查询个人加入队伍列表
+     * @param teamQuery 队伍查询参数
+     * @return
+     */
+    @GetMapping("/list/my/join")
+    public BaseResponse<List<TeamVo>> getMyJoinTeamList(TeamQuery teamQuery, HttpServletRequest request) {
+        //1. 判断请求参数是否为空
+        if (teamQuery == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        User loginUser = userService.getLoginUser(request);
+        if(loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        // 查询个人的用户队伍信息
+        QueryWrapper<UserTeam> qw = new QueryWrapper<>();
+        qw.eq("userId", loginUser.getId());
+        List<UserTeam> list = userTeamService.list(qw);
+
+        // 获取队伍id
+        Map<Long, List<UserTeam>> collect = list.stream()
+                .collect(Collectors.groupingBy(UserTeam::getTeamId));
+        List<Long> idList = new ArrayList<>(collect.keySet());
+        teamQuery.setIdList(idList);
+
+        List<TeamVo> teamVoList = teamService.getTeamList(teamQuery, true);
+        return ResultUtils.success(teamVoList);
     }
 }
