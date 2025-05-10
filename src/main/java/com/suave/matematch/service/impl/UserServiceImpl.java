@@ -12,6 +12,7 @@ import com.suave.matematch.model.domain.User;
 import com.suave.matematch.service.UserService;
 import com.suave.matematch.mapper.UserMapper;
 import com.suave.matematch.utils.AlgorithmUtils;
+import com.suave.matematch.utils.RedisUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
@@ -309,8 +310,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         // 查询缓存
-        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
-        List<User> userList = (List<User>) valueOperations.get(redisKey);
+        List<User> userList = RedisUtils.get(redisKey);
         if(userList != null) {
             return userList;
         }
@@ -322,11 +322,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         userList = userIPage.getRecords().stream().map(this::getSafetyUser).toList();
 
         // 向缓存插入数据
-        try {
-            valueOperations.set(redisKey, userList, 1, TimeUnit.DAYS);
-        } catch (Exception e) {
-            log.error("Redis set error: {}", e.getMessage());
-        }
+        RedisUtils.set(redisKey, userList);
         return userList;
     }
 
@@ -337,6 +333,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @return
      */
     public List<User> matchUser(long num, User loginUser) {
+        // 定义推荐用户的缓存key
+        String redisKey = "matematch:matchUser";
+        redisKey = String.format("%s:%s", redisKey, loginUser.getId());
+
+        // 查询缓存
+        List<User> redisUserList = RedisUtils.get(redisKey);
+        if(redisUserList != null) {
+            return redisUserList;
+        }
         String tags = loginUser.getTags();
         // 如果用户没有标签，则随机推荐（默认前num个用户）
         if(StringUtils.isBlank(tags)) {
@@ -353,7 +358,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         qw.isNotNull("tags");
         // 只需要查询id和tags（提升性能）
         qw.select("id", "tags");
-        List<User> userList = this.list(qw);
+
+        // 查询所有用户的redisKey
+        redisKey = String.format("%s:allUser", redisKey);
+        // 查询缓存
+        List<User> userList = RedisUtils.get(redisKey);
+        if(userList == null) {
+            userList = this.list(qw);
+            RedisUtils.set(redisKey, userList);
+        }
 
         // 存储匹配用户
         List<Pair<User, Integer>> list = new ArrayList<>();
@@ -394,6 +407,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             finalMatchUserList.add(matchUserMap.get(id));
         }
 
+        // 向缓存插入数据
+        RedisUtils.set(redisKey, userList);
         return finalMatchUserList;
     }
 

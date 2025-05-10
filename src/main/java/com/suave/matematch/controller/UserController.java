@@ -209,16 +209,11 @@ public class UserController {
      * @return
      */
     @GetMapping("/recommend")
-    public BaseResponse<List<UserVo>> recommendUsers(@RequestParam(required = false, defaultValue = "10") Long pageSize,
+    public BaseResponse<List<User>> recommendUsers(@RequestParam(required = false, defaultValue = "10") Long pageSize,
                                                    @RequestParam(required = false, defaultValue = "1") Long pageNum,
                                                    HttpServletRequest request) {
         List<User> list = userService.recommendUsers(pageSize, pageNum, request);
-        List<UserVo> userVoList = list.stream().map(user -> {
-            UserVo userVo = new UserVo();
-            BeanUtils.copyProperties(user, userVo);
-            return userVo;
-        }).toList();
-        return ResultUtils.success(userVoList);
+        return ResultUtils.success(list);
     }
 
     /**
@@ -228,7 +223,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/match")
-    public BaseResponse<List<UserVo>> matchUser(long num, HttpServletRequest request) {
+    public BaseResponse<List<User>> matchUser(long num, HttpServletRequest request) {
         if(num <= 0 || num > 20) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -237,11 +232,6 @@ public class UserController {
             throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
         List<User> userList = userService.matchUser(num, loginUser);
-        List<UserVo> userVoList = userList.stream().map(user -> {
-            UserVo userVo = new UserVo();
-            BeanUtils.copyProperties(user, userVo);
-            return userVo;
-        }).toList();
-        return ResultUtils.success(userVoList);
+        return ResultUtils.success(userList);
     }
 }

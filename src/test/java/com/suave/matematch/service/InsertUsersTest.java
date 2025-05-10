@@ -83,4 +83,42 @@ public class InsertUsersTest {
         stopwatch.stop();
         log.error("插入{}条数据耗时：{}ms", MAX_NUM, stopwatch.getTotalTimeMillis());
     }
+
+    @Test
+void doDeleteUsers() {
+    // 创建线程池
+    int threadCount = 10; // 线程数量
+    ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+    
+    // 分批处理参数
+    int startId = 10000;
+    int endId = 120000;
+    int batchSize = (endId - startId) / threadCount;
+    
+    // 创建任务集合
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
+    
+    // 分配任务
+    for (int i = 0; i < threadCount; i++) {
+        int finalStartId = startId + i * batchSize;
+        int finalEndId = i == threadCount - 1 ? endId : finalStartId + batchSize;
+        
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            for (int id = finalStartId; id < finalEndId; id++) {
+                userService.removeById(id);
+            }
+            System.out.println("线程" + Thread.currentThread().getName() + 
+                    "完成删除：" + finalStartId + "到" + finalEndId);
+        }, executorService);
+        
+        futures.add(future);
+    }
+    
+    // 等待所有任务完成
+    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    
+    // 关闭线程池
+    executorService.shutdown();
+    System.out.println("所有用户删除完成");
+}
 }
