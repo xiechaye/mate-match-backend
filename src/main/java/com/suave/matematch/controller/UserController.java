@@ -10,10 +10,12 @@ import com.suave.matematch.model.domain.request.UserLoginRequest;
 import com.suave.matematch.model.domain.request.UserRegisterRequest;
 import com.suave.matematch.common.ResultUtils;
 import com.suave.matematch.exception.BusinessException;
+import com.suave.matematch.model.domain.vo.UserVo;
 import com.suave.matematch.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -207,10 +209,39 @@ public class UserController {
      * @return
      */
     @GetMapping("/recommend")
-    public BaseResponse<List<User>> recommendUsers(@RequestParam(required = false, defaultValue = "10") Long pageSize,
+    public BaseResponse<List<UserVo>> recommendUsers(@RequestParam(required = false, defaultValue = "10") Long pageSize,
                                                    @RequestParam(required = false, defaultValue = "1") Long pageNum,
                                                    HttpServletRequest request) {
         List<User> list = userService.recommendUsers(pageSize, pageNum, request);
-        return ResultUtils.success(list);
+        List<UserVo> userVoList = list.stream().map(user -> {
+            UserVo userVo = new UserVo();
+            BeanUtils.copyProperties(user, userVo);
+            return userVo;
+        }).toList();
+        return ResultUtils.success(userVoList);
+    }
+
+    /**
+     * 匹配用户
+     * @param num 匹配人数
+     * @param request
+     * @return
+     */
+    @GetMapping("/match")
+    public BaseResponse<List<UserVo>> matchUser(long num, HttpServletRequest request) {
+        if(num <= 0 || num > 20) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        if(loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        List<User> userList = userService.matchUser(num, loginUser);
+        List<UserVo> userVoList = userList.stream().map(user -> {
+            UserVo userVo = new UserVo();
+            BeanUtils.copyProperties(user, userVo);
+            return userVo;
+        }).toList();
+        return ResultUtils.success(userVoList);
     }
 }

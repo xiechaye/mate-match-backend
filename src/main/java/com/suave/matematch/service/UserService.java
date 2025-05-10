@@ -96,4 +96,12 @@ public interface UserService extends IService<User> {
      * @return
      */
     List<User> recommendUsers(Long pageSize, Long pageNum, HttpServletRequest request);
+
+    /**
+     * 获取推荐用户列表
+     * @param num 用户个数
+     * @param loginUser 登录用户
+     * @return
+     */
+    List<User> matchUser(long num, User loginUser);
 }

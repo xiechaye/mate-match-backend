@@ -11,6 +11,7 @@ import com.suave.matematch.exception.BusinessException;
 import com.suave.matematch.model.domain.User;
 import com.suave.matematch.service.UserService;
 import com.suave.matematch.mapper.UserMapper;
+import com.suave.matematch.utils.AlgorithmUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
@@ -18,18 +19,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.suave.matematch.contant.UserConstant.ADMIN_ROLE;
 import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
@@ -329,6 +328,73 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             log.error("Redis set error: {}", e.getMessage());
         }
         return userList;
+    }
+
+    /**
+     * 匹配用户（推荐用户）
+     * @param num 用户个数
+     * @param loginUser 登录用户
+     * @return
+     */
+    public List<User> matchUser(long num, User loginUser) {
+        String tags = loginUser.getTags();
+        // 如果用户没有标签，则随机推荐（默认前num个用户）
+        if(StringUtils.isBlank(tags)) {
+            Page<User> page = this.page(new Page<>(0, num));
+            if(page.getTotal() == 0) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR);
+            }
+            return page.getRecords().stream().map(this::getSafetyUser).toList();
+        }
+        Gson gson = new Gson();
+        List<String> userTageList = gson.fromJson(tags, new TypeToken<List<String>>() {}.getType());
+
+        QueryWrapper<User> qw = new QueryWrapper<>();
+        qw.isNotNull("tags");
+        // 只需要查询id和tags（提升性能）
+        qw.select("id", "tags");
+        List<User> userList = this.list(qw);
+
+        // 存储匹配用户
+        List<Pair<User, Integer>> list = new ArrayList<>();
+        // 遍历用户列表
+        for (User user : userList) {
+            String matchUserTags = user.getTags();
+            // 如果用户没有标签或查询出的用户是登录用户，则跳过
+            if(StringUtils.isBlank(matchUserTags) || Objects.equals(user.getId(), loginUser.getId())) {
+                continue;
+            }
+
+            // 解析JSON字符串
+            List<String> matchUserTagList = gson.fromJson(matchUserTags, new TypeToken<List<String>>() {}.getType());
+
+            // 计算匹配度
+            int distance = AlgorithmUtils.minDistance(userTageList, matchUserTagList);
+            Pair<User, Integer> pair = Pair.of(user, distance);
+            list.add(pair);
+        }
+
+        // 获取匹配度前num个用户id(按照匹配度升序排列)
+        List<Long> matchUserIdList = list.stream()
+                .sorted((a, b) -> a.getSecond() - b.getSecond())
+                .map(pair -> pair.getFirst().getId())
+                .limit(num)
+                .toList();
+
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("id", matchUserIdList);
+        // 查询用户信息
+        List<User> matchUserList = this.list(queryWrapper);
+        // 将用户信息与用户id进行映射
+        Map<Long, User> matchUserMap = matchUserList.stream().collect(Collectors.toMap(User::getId, this::getSafetyUser));
+
+        // 存储最终匹配的用户(脱敏，排序)
+        List<User> finalMatchUserList = new ArrayList<>();
+        for (Long id : matchUserIdList) {
+            finalMatchUserList.add(matchUserMap.get(id));
+        }
+
+        return finalMatchUserList;
     }
 
     /**
