@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.suave.matematch.common.ErrorCode;
+import com.suave.matematch.contant.RedisConstant;
 import com.suave.matematch.exception.BusinessException;
 import com.suave.matematch.model.domain.User;
 import com.suave.matematch.service.UserService;
@@ -290,7 +291,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
-     * 获取推荐用户列表
+     * 获取推荐默认用户列表
      *
      * @param pageSize 单页数据数
      * @param pageNum 页码
@@ -298,8 +299,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @return
      */
     public List<User> recommendUsers(Long pageSize, Long pageNum, HttpServletRequest request) {
-        //todo 推荐算法
-        String redisKey = "matematch:recommend";
+        String redisKey = RedisConstant.RECOMMEND_KEY;
         // 获取用户id
         User user = getLoginUser(request);
         if(user == null || user.getId() <= 0) {
@@ -316,6 +316,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        if(user != null) {
+            queryWrapper.ne("id", user.getId());
+        }
         IPage<User> userIPage = userMapper.selectPage(new Page<>(pageNum, pageSize), queryWrapper);
 
         // 脱敏
@@ -334,10 +337,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     public List<User> matchUser(long num, User loginUser) {
         // 定义推荐用户的缓存key
-        String redisKey = "matematch:matchUser";
-        String matchUserRedisKey = String.format("%s:%s", redisKey, loginUser.getId());
+        String matchUserRedisKey = String.format("%s:%s", RedisConstant.MATE_MATCH_KEY, loginUser.getId());
         // 查询所有用户的redisKey
-        String allUserRedisKey = String.format("%s:allUser", redisKey);
+        String allUserRedisKey = String.format("%s:allUser", RedisConstant.MATE_MATCH_KEY);
 
         // 查询缓存
         List<User> redisUserList = RedisUtils.get(matchUserRedisKey);

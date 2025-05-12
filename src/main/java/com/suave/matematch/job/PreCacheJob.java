@@ -3,6 +3,7 @@ package com.suave.matematch.job;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.suave.matematch.contant.RedisConstant;
 import com.suave.matematch.mapper.UserMapper;
 import com.suave.matematch.model.domain.User;
 import com.suave.matematch.service.UserService;
@@ -38,12 +39,12 @@ public class PreCacheJob {
      */
     @Scheduled(cron = "0 0 0 * * *")
     public void doCacheRecommendUsers() {
-        RLock lock = redissonClient.getLock("matematch:precahejob:docache:lock");
+        RLock lock = redissonClient.getLock(RedisConstant.SCHEDULED_LOGIN_KEY);
         try {
             if(lock.tryLock(0,30,TimeUnit.MINUTES)){
                 mainUserIdList.forEach(userId -> {
-                    String redisKey = "matematch:recommend";
-                    redisKey = String.format("%s:%s", redisKey, userId);
+
+                    String redisKey = String.format("%s:%s", RedisConstant.RECOMMEND_KEY, userId);
 
                     Page<User> page = new Page<>(1, 10);
                     QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -79,11 +80,10 @@ public class PreCacheJob {
      */
     @Scheduled(cron = "0 0 0 * * *")
     public void doCacheUnLoginRecommendUsers() {
-        RLock lock = redissonClient.getLock("matematch:precahejob:dounlogincache:lock");
+        RLock lock = redissonClient.getLock(RedisConstant.SCHEDULED_UNLOGIN_KEY);
         try {
             if(lock.tryLock(0, 5, TimeUnit.MINUTES)){
-                String redisKey = "matematch:recommend";
-                redisKey = String.format("%s:%s", redisKey, "all");
+                String redisKey = String.format("%s:%s", RedisConstant.RECOMMEND_KEY, "all");
 
                 Page<User> page = new Page<>(1, 10);
                 QueryWrapper<User> queryWrapper = new QueryWrapper<>();
