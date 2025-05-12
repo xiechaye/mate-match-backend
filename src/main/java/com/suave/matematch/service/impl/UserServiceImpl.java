@@ -335,10 +335,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public List<User> matchUser(long num, User loginUser) {
         // 定义推荐用户的缓存key
         String redisKey = "matematch:matchUser";
-        redisKey = String.format("%s:%s", redisKey, loginUser.getId());
+        String matchUserRedisKey = String.format("%s:%s", redisKey, loginUser.getId());
+        // 查询所有用户的redisKey
+        String allUserRedisKey = String.format("%s:allUser", redisKey);
 
         // 查询缓存
-        List<User> redisUserList = RedisUtils.get(redisKey);
+        List<User> redisUserList = RedisUtils.get(matchUserRedisKey);
         if(redisUserList != null) {
             return redisUserList;
         }
@@ -359,13 +361,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 只需要查询id和tags（提升性能）
         qw.select("id", "tags");
 
-        // 查询所有用户的redisKey
-        redisKey = String.format("%s:allUser", redisKey);
+
         // 查询缓存
-        List<User> userList = RedisUtils.get(redisKey);
+        List<User> userList = RedisUtils.get(allUserRedisKey);
         if(userList == null) {
             userList = this.list(qw);
-            RedisUtils.set(redisKey, userList);
+            RedisUtils.set(allUserRedisKey, userList);
         }
 
         // 存储匹配用户
@@ -408,7 +409,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         // 向缓存插入数据
-        RedisUtils.set(redisKey, userList);
+        RedisUtils.set(matchUserRedisKey, finalMatchUserList);
         return finalMatchUserList;
     }
 

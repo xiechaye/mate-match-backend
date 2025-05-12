@@ -76,7 +76,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         }
         //   5. 如果status是加密状态，一定要有密码，且密码<=32
         String password = team.getPassword();
-        if (status == TeamStatusEnum.SECRET.getValue() && StringUtils.isBlank(password) || password.length() > 32) {
+        if (status == TeamStatusEnum.SECRET.getValue() && (StringUtils.isBlank(password) || password.length() > 32)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码设置错误");
         }
         //   6. 超时时间>当前时间
@@ -167,16 +167,21 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             qw.eq("userId", userId);
         }
         // 根据队伍状态查询
-        int status = Optional.ofNullable(teamQuery.getStatus()).orElse(0);
-        TeamStatusEnum teamStatus = TeamStatusEnum.getEnumByValue(status);
-        if(teamStatus == null) {
-            teamStatus = TeamStatusEnum.PUBLIC;
+        Integer status = teamQuery.getStatus();
+        if(status == null) {
+            qw.in("status", TeamStatusEnum.PUBLIC.getValue(), TeamStatusEnum.SECRET.getValue());
+        }else {
+            TeamStatusEnum teamStatus = TeamStatusEnum.getEnumByValue(status);
+            if(teamStatus == null) {
+                teamStatus = TeamStatusEnum.PUBLIC;
+            }
+            // 只有管理员可以查询私有队伍
+            if(!isAdmin && teamStatus == TeamStatusEnum.PRIVATE ) {
+                throw new BusinessException(ErrorCode.NO_AUTH);
+            }
+            qw.eq("status", teamStatus.getValue());
         }
-        // 只有管理员可以查询私有队伍
-        if(!isAdmin && teamStatus == TeamStatusEnum.PRIVATE ) {
-            throw new BusinessException(ErrorCode.NO_AUTH);
-        }
-        qw.eq("status", teamStatus.getValue());
+
 
         Page<Team> teamPage = this.page(page, qw);
 

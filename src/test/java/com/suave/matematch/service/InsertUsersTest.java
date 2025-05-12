@@ -11,6 +11,7 @@ import org.springframework.util.StopWatch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @SpringBootTest
 @Slf4j
@@ -85,40 +86,47 @@ public class InsertUsersTest {
     }
 
     @Test
-void doDeleteUsers() {
-    // 创建线程池
-    int threadCount = 10; // 线程数量
-    ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-    
-    // 分批处理参数
-    int startId = 10000;
-    int endId = 120000;
-    int batchSize = (endId - startId) / threadCount;
-    
-    // 创建任务集合
-    List<CompletableFuture<Void>> futures = new ArrayList<>();
-    
-    // 分配任务
-    for (int i = 0; i < threadCount; i++) {
-        int finalStartId = startId + i * batchSize;
-        int finalEndId = i == threadCount - 1 ? endId : finalStartId + batchSize;
-        
-        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            for (int id = finalStartId; id < finalEndId; id++) {
-                userService.removeById(id);
-            }
-            System.out.println("线程" + Thread.currentThread().getName() + 
-                    "完成删除：" + finalStartId + "到" + finalEndId);
-        }, executorService);
-        
-        futures.add(future);
+    void doDeleteUsers() {
+        // 创建更多线程提高并行度
+        int threadCount = 50; // 增加线程数
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+
+        // 分批处理参数
+        int startId = 10000;
+        int endId = 1200000;
+        int batchSize = 10000; // 固定批次大小更好控制
+        int totalBatches = (int) Math.ceil((double)(endId - startId) / batchSize);
+
+        // 创建任务集合
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        AtomicInteger successCount = new AtomicInteger(0);
+
+        // 分配任务
+        for (int i = 0; i < totalBatches; i++) {
+            int batchStartId = startId + i * batchSize;
+            int batchEndId = Math.min(batchStartId + batchSize, endId);
+
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    for (int id = batchStartId; id < batchEndId; id++) {
+                        userService.removeById(id);
+                        successCount.incrementAndGet();
+                    }
+                    System.out.println("线程" + Thread.currentThread().getName() +
+                            "完成删除：" + batchStartId + "到" + batchEndId);
+                } catch (Exception e) {
+                    System.err.println("删除ID " + batchStartId + "-" + batchEndId + " 时出错: " + e.getMessage());
+                }
+            }, executorService);
+
+            futures.add(future);
+        }
+
+        // 等待所有任务完成
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        // 关闭线程池
+        executorService.shutdown();
+        System.out.println("所有用户删除完成，共删除 " + successCount.get() + " 条记录");
     }
-    
-    // 等待所有任务完成
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-    
-    // 关闭线程池
-    executorService.shutdown();
-    System.out.println("所有用户删除完成");
-}
 }
