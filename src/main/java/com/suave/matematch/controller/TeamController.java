@@ -31,7 +31,10 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/team")
 @AllArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173"}, allowCredentials = "true")
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "https://mate-match-86rzms7z1-xiechayes-projects.vercel.app"
+},  allowCredentials = "true")
 public class TeamController {
 
     private final TeamService teamService;

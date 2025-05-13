@@ -31,7 +31,10 @@ import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
 @RestController
 @RequestMapping("/user")
 @AllArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "https://mate-match-86rzms7z1-xiechayes-projects.vercel.app"
+},  allowCredentials = "true")
 public class UserController {
 
     private final UserService userService;
