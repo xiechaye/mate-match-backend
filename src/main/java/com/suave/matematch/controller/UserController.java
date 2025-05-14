@@ -33,7 +33,7 @@ import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
 @AllArgsConstructor
 @CrossOrigin(origins = {
         "http://localhost:5173",
-        "https://mate-match-86rzms7z1-xiechayes-projects.vercel.app"
+        "http://localhost:80"
 },  allowCredentials = "true")
 public class UserController {
 
