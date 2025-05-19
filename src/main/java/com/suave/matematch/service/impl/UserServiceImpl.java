@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.suave.matematch.common.ErrorCode;
+import com.suave.matematch.common.ResultUtils;
 import com.suave.matematch.contant.RedisConstant;
 import com.suave.matematch.contant.UserConstant;
 import com.suave.matematch.exception.BusinessException;
@@ -14,6 +15,7 @@ import com.suave.matematch.model.domain.User;
 import com.suave.matematch.service.UserService;
 import com.suave.matematch.mapper.UserMapper;
 import com.suave.matematch.utils.AlgorithmUtils;
+import com.suave.matematch.utils.OssUtils;
 import com.suave.matematch.utils.RedisUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,8 +27,14 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -418,6 +426,56 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 向缓存插入数据
         RedisUtils.set(matchUserRedisKey, finalMatchUserList);
         return finalMatchUserList;
+    }
+
+    /**
+     * 上传头像
+     * @param multipartFile 头像文件
+     * @param loginUser 登录用户
+     * @return
+     */
+    public String uploadAvatar(MultipartFile multipartFile, User loginUser) {
+        // 2. 文件校验（大小、类型等） - 可选但推荐
+        // 例如：限制文件大小不超过2MB
+        if (multipartFile.getSize() > 2 * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "头像文件过大，请上传小于2MB的文件");
+        }
+        // 例如：限制文件类型
+        String contentType = multipartFile.getContentType();
+        if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png") && !contentType.equals("image/gif"))) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "不支持的头像文件格式，请上传JPG, PNG, GIF格式");
+        }
+
+        byte[] fileBytes;
+        try {
+            // 4. 从 MultipartFile 获取字节数组
+            fileBytes = multipartFile.getBytes();
+        } catch (IOException e) {
+            log.error("获取上传文件字节流失败. UserID: {}", loginUser.getId(), e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "读取上传文件内容失败: " + e.getMessage());
+        }
+
+        // 5. 准备 objectName (OSS中的对象键)
+        String originalFilename = multipartFile.getOriginalFilename();
+        String fileExtension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String ossDirectory = "mate-match/avatars/" + loginUser.getId() + "/"; // Ensure trailing slash
+        String fileNameInOss = UUID.randomUUID().toString() + fileExtension;
+        String objectName = ossDirectory + fileNameInOss;
+
+        String avatarUrl = OssUtils.uploadImage(fileBytes, objectName);
+
+        // 4. 更新用户数据库中的头像URL
+        User user = new User();
+        user.setId(loginUser.getId());
+        user.setAvatarUrl(avatarUrl);
+        int i = userMapper.updateById(user);
+        if (i <= 0) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "头像更新失败");
+        }
+        return avatarUrl;
     }
 
     /**

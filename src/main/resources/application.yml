@@ -87,3 +87,10 @@ knife4j:
     # 开启动态请求参数，true-开启，false-关闭
     enable-dynamic-parameter: true
 
+alibaba:
+  oss:
+    endpoint: endpoint
+    bucket-name: bucket-name
+    access-key-id: access-key-id
+    access-key-secret: access-key-secret
+    region: region

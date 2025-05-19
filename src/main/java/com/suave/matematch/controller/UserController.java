@@ -16,6 +16,7 @@ import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -231,5 +232,21 @@ public class UserController {
         }
         List<User> userList = userService.matchUser(num, loginUser);
         return ResultUtils.success(userList);
+    }
+
+    @PostMapping("/upload/avatar")
+    public BaseResponse<String> uploadAvatar(@RequestPart("file") MultipartFile file, HttpServletRequest request) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请选择要上传的头像文件");
+        }
+
+        User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+
+        String avatarUrl = userService.uploadAvatar(file, loginUser);
+
+        return ResultUtils.success(avatarUrl);
     }
 }

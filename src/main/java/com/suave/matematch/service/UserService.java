@@ -3,6 +3,7 @@ package com.suave.matematch.service;
 import com.suave.matematch.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -104,4 +105,12 @@ public interface UserService extends IService<User> {
      * @return
      */
     List<User> matchUser(long num, User loginUser);
+
+    /**
+     * 上传头像
+     * @param multipartFile 头像文件
+     * @param loginUser 登录用户
+     * @return
+     */
+    String uploadAvatar(MultipartFile multipartFile, User loginUser);
 }
