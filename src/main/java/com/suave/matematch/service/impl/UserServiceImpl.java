@@ -146,7 +146,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 用户不存在
         if (user == null) {
             log.info("user login failed, userAccount cannot match userPassword");
-            throw new BusinessException(ErrorCode.USER_NOT_EXIST, "用户不存在");
+            throw new BusinessException(ErrorCode.USER_NOT_EXIST, "请检查用户名和密码");
         }
         // 3. 用户脱敏
         User safetyUser = getSafetyUser(user);
