@@ -33,7 +33,8 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @CrossOrigin(origins = {
         "http://localhost:5173",
-        "http://localhost:80"
+        "http://localhost:80",
+        "http://120.26.19.193"
 },  allowCredentials = "true")
 public class TeamController {
 

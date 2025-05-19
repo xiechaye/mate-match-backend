@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.suave.matematch.common.ErrorCode;
 import com.suave.matematch.contant.RedisConstant;
+import com.suave.matematch.contant.UserConstant;
 import com.suave.matematch.exception.BusinessException;
 import com.suave.matematch.model.domain.User;
 import com.suave.matematch.service.UserService;
@@ -97,6 +98,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = new User();
         user.setUserAccount(userAccount);
         user.setUserPassword(encryptPassword);
+        // 昵称默认为用户名
+        user.setUsername(userAccount);
+        // 默认头像
+        user.setAvatarUrl(UserConstant.DEFAULT_AVATAR_URL);
         boolean saveResult = this.save(user);
         if (!saveResult) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败");

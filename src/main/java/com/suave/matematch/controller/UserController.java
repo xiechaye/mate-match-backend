@@ -10,12 +10,10 @@ import com.suave.matematch.model.domain.request.UserLoginRequest;
 import com.suave.matematch.model.domain.request.UserRegisterRequest;
 import com.suave.matematch.common.ResultUtils;
 import com.suave.matematch.exception.BusinessException;
-import com.suave.matematch.model.domain.vo.UserVo;
 import com.suave.matematch.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,7 +31,8 @@ import static com.suave.matematch.contant.UserConstant.USER_LOGIN_STATE;
 @AllArgsConstructor
 @CrossOrigin(origins = {
         "http://localhost:5173",
-        "http://localhost:80"
+        "http://localhost:80",
+        "http://120.26.19.193"
 },  allowCredentials = "true")
 public class UserController {
 
