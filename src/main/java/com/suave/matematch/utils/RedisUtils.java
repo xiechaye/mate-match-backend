@@ -39,4 +39,12 @@ public class RedisUtils {
             log.error("Redis写入异常: {}", e.getMessage());
         }
     }
+
+    public static void del(String key) {
+        try {
+            redisTemplate.delete(key);
+        } catch (Exception e) {
+            log.error("Redis删除异常: {}", e.getMessage());
+        }
+    }
 }

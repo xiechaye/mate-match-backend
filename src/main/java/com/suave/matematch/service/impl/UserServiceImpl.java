@@ -277,10 +277,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     /**
      * 更新用户信息
      * @param user 用户信息
-     * @param loginUser 登录用户
+     * @param request 登录用户
      * @return
      */
-    public int updateUser(User user, User loginUser) {
+    public int updateUser(User user, HttpServletRequest request) {
+        User loginUser = this.getLoginUser(request);
         long userId = user.getId();
         if(userId <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -300,6 +301,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if(i == 0) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "更新失败");
         }
+        // 更新成功后，删除缓存
+        this.userLogout(request);
         return i;
     }
 

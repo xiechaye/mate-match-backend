@@ -195,7 +195,7 @@ public class UserController {
             throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
         // 更新用户
-        int result = userService.updateUser(user, loginUser);
+        int result = userService.updateUser(user, request);
         return ResultUtils.success(result);
     }
 

@@ -84,10 +84,10 @@ public interface UserService extends IService<User> {
     /**
      * 更新用户信息
      * @param user 用户信息
-     * @param loginUser 登录用户
+     * @param request 登录用户
      * @return
      */
-    int updateUser(User user, User loginUser);
+    int updateUser(User user, HttpServletRequest request);
 
     /**
      * 获取推荐用户列表
